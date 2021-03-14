@@ -121,8 +121,8 @@ class MyGame(arcade.Window):
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         """ Нажатие мыши (удерживание)"""
         if self._going:
-            col = int(y // (SIZE + MARGIN))
-            row = int(x // (SIZE + MARGIN))
+            col = int(x // (SIZE + MARGIN))
+            row = int(y // (SIZE + MARGIN))
             if col >= COLUMN_COUNT or row >= ROW_COUNT:
                 return
             if button == arcade.MOUSE_BUTTON_LEFT:
@@ -137,7 +137,7 @@ class MyGame(arcade.Window):
                     self.action = None
                     self.gird_sprites[self.row][self.col].alpha = 255
                 else:
-                    self.flag(col, row)
+                    self.flag(row, col)
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
         """ Нажатие мыши (действие) """
