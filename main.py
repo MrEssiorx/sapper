@@ -1,47 +1,43 @@
 import arcade
 from random import sample
-import sys
-sys.setrecursionlimit(10000)
 
-SPRITE_SIZE = 50
+# --- Setting global values (optional) ---
 
-COLUMN_COUNT = 20
-ROW_COUNT = 20
+COLUMN_COUNT = 20  # The width of field (tiles number)
+ROW_COUNT = 20  # The height of field (tiles number)
 
-BOMBS = 40
+BOMBS = 40  # The number of bombs
 
-SIZE = 30
+SIZE = 30  # The size of one tile
 
-MARGIN = 3
+MARGIN = 3  # The distance between tiles on field
 
-SCREEN_WIDTH = (MARGIN + SIZE) * COLUMN_COUNT + MARGIN
-SCREEN_HEIGHT = (MARGIN + SIZE) * ROW_COUNT + MARGIN
+SCREEN_TITLE = 'Sapper'  # The title of screen
+TEXT_ALPHA = 180  # The transparency of win/lose message
 
-SPRITES_SCALE = SIZE / SPRITE_SIZE
-TEXT_SCALE = SPRITES_SCALE * 2
-TEXT_ALPHA = 180
+SPRITE_SIZE = 50  # The size of sprites (png image)
 
-SCREEN_TITLE = 'Сапёр'
+# --- Setting non-optional global variables ---
+
+SCREEN_WIDTH = (MARGIN + SIZE) * COLUMN_COUNT + MARGIN  # Width of game screen (in pixels)
+SCREEN_HEIGHT = (MARGIN + SIZE) * ROW_COUNT + MARGIN  # Height of game screen (in pixels)
+
+SPRITES_SCALE = SIZE / SPRITE_SIZE  # The scale of drawing tiles
+TEXT_SCALE = SPRITES_SCALE * 2  # The scale of drawing lose/win messages
 
 
+# ----- The main game class (see arcade documentation) ------
 class MyGame(arcade.Window):
     def __init__(self, width, height, title):
-        # ----- Инициализация класса предка и функции вне логики: -----
-        #
-        self._going = True
+
+        # ----- Initialing parent class and setting out-game properties: -----
         super().__init__(width, height, title)
         arcade.set_background_color(arcade.color.DARK_GRAY)
-        #
-        # ----- Заполнение матрицы и списка спрайтов: -----
-        #
-        # -- инициализация переменных
-        self.col = 0
-        self.row = 0
-        self.action = None
+
+        # ----- Creating Sprite-objects and filling  -----
+        #       grind list and list containing all sprites
         self.gird_sprite_list = arcade.SpriteList()
         self.gird_sprites = []
-        #
-        # -- добавление спрайтов
         for row in range(ROW_COUNT):
             self.gird_sprites.append([])
             for column in range(COLUMN_COUNT):
@@ -52,20 +48,22 @@ class MyGame(arcade.Window):
                 sprite.center_y = y
                 self.gird_sprite_list.append(sprite)
                 self.gird_sprites[row].append(sprite)
-        #
-        # --- Заполнение поля и переменных игры:
-        #
-        # -- инициализация переменных
+
+        # ----- Initialing game logic variables: -----
+        self.col = 0
+        self.row = 0
+        self.action = None
+        self._going = True
         self.field = [[0] * COLUMN_COUNT for _ in range(ROW_COUNT)]
         self.not_opened = ROW_COUNT * COLUMN_COUNT
         self.flags = []
-        #
-        # -- раскидка бомб
+
+        # -- placing mines on field
         rnd = [i for i in range(0, COLUMN_COUNT * ROW_COUNT)]
         for el in sample(rnd, BOMBS):
             self.field[el // COLUMN_COUNT][el % COLUMN_COUNT] = -1
-        #
-        # -- заполнение поля числами
+
+        # -- filling field with numbers according to rules
         for row in range(ROW_COUNT):
             for col in range(COLUMN_COUNT):
                 if self.field[row][col] == -1:
@@ -73,9 +71,8 @@ class MyGame(arcade.Window):
                         for c1 in range(max(col - 1, 0), min(col + 2, COLUMN_COUNT)):
                             if self.field[r1][c1] != -1:
                                 self.field[r1][c1] += 1
-        #
-        # ----- Добавления спрайтов открытых клеток: -----
-        #
+
+        # ----- **adding open-tile sprites: -----
         for row in range(ROW_COUNT):
             for col in range(COLUMN_COUNT):
                 if self.field[row][col] == -1:
@@ -84,20 +81,19 @@ class MyGame(arcade.Window):
                     self.gird_sprites[row][col].append_texture(
                         arcade.load_texture(f"sprites/op{self.field[row][col]}1.png"))
                 self.gird_sprites[row][col].append_texture(arcade.load_texture("sprites/flag.png"))
-        #
-        # -- делаем поле невидимым
-        #
+
+        # -- making tiles closed
         for row in range(ROW_COUNT):
             for col in range(COLUMN_COUNT):
                 self.field[row][col] += 10
 
     def on_draw(self):
-        """ Рендер спрайтов: """
+        """ Sprites rendering: """
         arcade.start_render()
         self.gird_sprite_list.draw()
 
     def way(self, row, col):
-        """ Открытие клетки: """
+        """ Player opens closed tile: """
         if self.field[row][col] > 8:
             self._open(row, col)
             if self.field[row][col] == -1:
@@ -109,7 +105,7 @@ class MyGame(arcade.Window):
                     self._win()
 
     def flag(self, row, col):
-        """ Поставка влажка: """
+        """ Player placing flag on closed tile: """
         if self.field[row][col] > 8:
             if (row, col) in self.flags:
                 self.flags.remove((row, col))
@@ -119,7 +115,7 @@ class MyGame(arcade.Window):
                 self.gird_sprites[row][col].set_texture(2)
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
-        """ Нажатие мыши (удерживание)"""
+        """ Pressing mouse (acting flag placing, but not opening tile)"""
         if self._going:
             col = int(x // (SIZE + MARGIN))
             row = int(y // (SIZE + MARGIN))
@@ -140,7 +136,7 @@ class MyGame(arcade.Window):
                     self.flag(row, col)
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
-        """ Нажатие мыши (действие) """
+        """ Releasing mouse (opening tile if action wasn't canceled) """
         if self.action:
             if self.action == self.way:
                 self.gird_sprites[self.row][self.col].alpha = 255
@@ -148,13 +144,13 @@ class MyGame(arcade.Window):
             self.action = None
 
     def _open(self, row, col):
-        """ Открытие клетки по координатам: """
+        """ Changing tile to opened: """
         self.field[row][col] -= 10
         self.gird_sprites[row][col].set_texture(1)
         self.not_opened -= 1
 
     def _wave(self, row, col):
-        """ Волновой алгоритм закрашивания: """
+        """ Wave algorithm of filling void: """
         if self.field[row][col] == 0:
             for r1 in range(max(row - 1, 0), min(row + 2, ROW_COUNT)):
                 for c1 in range(max(col - 1, 0), min(col + 2, COLUMN_COUNT)):
@@ -163,7 +159,7 @@ class MyGame(arcade.Window):
                         self._wave(r1, c1)
 
     def _win(self):
-        """ Победа """
+        """ Player won """
         self._going = False
         for row in range(ROW_COUNT):
             for col in range(COLUMN_COUNT):
@@ -175,7 +171,7 @@ class MyGame(arcade.Window):
         self.gird_sprite_list.append(text)
 
     def _lose(self):
-        """ Проигрыш """
+        """ Player bombed """
         self._going = False
         for row in range(ROW_COUNT):
             for col in range(COLUMN_COUNT):
