@@ -94,7 +94,7 @@ class MyGame(arcade.Window):
 
     def way(self, row, col):
         """ Player opens closed tile: """
-        if self.field[row][col] > 8:
+        if self.field[row][col] > 8 and (row, col) not in self.flags:
             self._open(row, col)
             if self.field[row][col] == -1:
                 self._lose()
@@ -103,6 +103,13 @@ class MyGame(arcade.Window):
                     self._wave(row, col)
                 if self.not_opened == BOMBS:
                     self._win()
+
+    def number(self, row, col):
+        """ Player opens closed tiles around number: """
+        for r in range(row - 1, row + 2):
+            for c in range(col - 1, col + 2):
+                if 0 <= r < ROW_COUNT and 0 <= c < COLUMN_COUNT:
+                    self.way(r, c)
 
     def flag(self, row, col):
         """ Player placing flag on closed tile: """
@@ -115,31 +122,69 @@ class MyGame(arcade.Window):
                 self.gird_sprites[row][col].set_texture(2)
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
-        """ Pressing mouse (acting flag placing, but not opening tile)"""
+        """ Pressing mouse (acting flag placing, but not opening tile or pressing number)"""
         if self._going:
             col = int(x // (SIZE + MARGIN))
             row = int(y // (SIZE + MARGIN))
             if col >= COLUMN_COUNT or row >= ROW_COUNT:
                 return
+
+            # holding not opened tile or number
             if button == arcade.MOUSE_BUTTON_LEFT:
                 self.col = col
                 self.row = row
+
+                # holding not opened tile
                 if self.field[self.row][self.col] > 8:
                     if (self.row, self.col) not in self.flags:
                         self.gird_sprites[self.row][self.col].alpha = 100
                         self.action = self.way
+
+                # holding number
+                elif 1 <= self.field[self.row][self.col] <= 8:
+                    flags_count = 0
+                    for r in range(self.row - 1, self.row + 2):
+                        for c in range(self.col - 1, self.col + 2):
+                            if 0 <= r < ROW_COUNT and 0 <= c < COLUMN_COUNT:
+                                if (r, c) in self.flags:
+                                    flags_count += 1
+                    if flags_count == self.field[self.row][self.col]:
+                        for r in range(self.row - 1, self.row + 2):
+                            for c in range(self.col - 1, self.col + 2):
+                                if 0 <= r < ROW_COUNT and 0 <= c < COLUMN_COUNT and \
+                                        not (r == self.row and c == self.col) and \
+                                        self.field[r][c] > 8 and (r, c) not in self.flags:
+                                    self.gird_sprites[r][c].alpha = 100
+                        self.action = self.number
+
+            # canceling action or placing flag
             elif button == arcade.MOUSE_BUTTON_RIGHT:
+                # canceling action
                 if self.action == self.way:
                     self.action = None
                     self.gird_sprites[self.row][self.col].alpha = 255
+                elif self.action == self.number:
+                    self.action = None
+                    for r in range(self.row - 1, self.row + 2):
+                        for c in range(self.col - 1, self.col + 2):
+                            if 0 <= r < ROW_COUNT and 0 <= c < COLUMN_COUNT and \
+                                    not (r == self.row and c == self.col):
+                                self.gird_sprites[r][c].alpha = 255
+                # actual, placing flag
                 else:
                     self.flag(row, col)
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
-        """ Releasing mouse (opening tile if action wasn't canceled) """
+        """ Releasing mouse (opening tile or acting pressing number if action wasn't canceled) """
         if self.action:
             if self.action == self.way:
                 self.gird_sprites[self.row][self.col].alpha = 255
+            elif self.action == self.number:
+                for r in range(self.row - 1, self.row + 2):
+                    for c in range(self.col - 1, self.col + 2):
+                        if 0 <= r < ROW_COUNT and 0 <= c < COLUMN_COUNT and \
+                                not (r == self.row and c == self.col):
+                            self.gird_sprites[r][c].alpha = 255
             self.action(self.row, self.col)
             self.action = None
 
